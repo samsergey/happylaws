@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <script src='../lib/d3.js'></script>
+    <script src='../lib/graphics.js'></script>
+    <script src='../lib/statistics.js'></script>
+    <script src='../lib/signal.js'></script>
+    <link rel="stylesheet" href="../css/styles.css">
+    <style>
+    .life .A .line {
+	stroke : navy;
+	stroke-opacity : 0.5;
+	stroke-width : 1;
+        }
+    .life .B .line {
+	stroke : indianred;
+	stroke-width : 2;
+        }
+    .1 {
+	fill : indianred;
+        }
+    .2 {
+	fill : blue;
+        }
+    .3 {
+	fill : darkgreen;
+        }
+    .4 {
+	fill : navy;
+        }
+    </style>
+  </head>
+    <body>
+    <svg id='fig1' width='700' height='400'></svg>
+    <svg id='fig2' width='700' height='400'></svg>
+    <script>
+    
+var fig1 = d3.select("#fig1")
+var fig2 = d3.select("#fig2")
+
+function happyEMA(opts)
+{
+    var Ny = (opts.years || 10),
+	lambda = opts.lambda || 1/7,
+	mu = opts.alpha || 1/60,
+	fig = opts.paper || fig1
+
+    var N = 365*Ny
+
+    var g = d3.randomNormal(0,0.1), p = PoissonProcess(lambda)
+    var life = d3.range(N).map(() => g()*p()).accumsum(0)
+    var alpha = (1 - Math.pow(10,-mu))
+    var memory = life.ema(alpha)
+
+    xs = [], d = life[0]-memory[0]
+    for(var i = 1; i<N; i++)
+    {
+	if ((life[i]-memory[i])*d <= 0)
+	{
+	    d = life[i]-memory[i]
+	    xs.push(i/365)
+	}
+    }
+
+    life = d3.zip(d3.range(0,Ny,1/365),life)
+    memory = d3.zip(d3.range(0,Ny,1/365),memory)
+    return [life, memory, xs]
+}
+
+function happyEMAfig(opts)
+{
+    var life,memory,xs
+    [life,memory,xs]=happyEMA(opts)
+    
+    var Ny = (opts.years || 10),
+	lambda = opts.lambda || 1/7,
+	mu = opts.alpha || 1/60,
+	fig = opts.paper || fig1
+
+    var N = 365*Ny
+
+    return new Graphics(fig)
+	.yRange([-Math.sqrt(N*lambda),Math.sqrt(N*lambda)])
+	.xRange([0,Ny])
+	.gridLines({'x':xs})
+	.diffListPlot(life,memory,{'class':'life'})
+	.axes({xLabel : 'время, годы',
+	       yLabel : 'условный "уровень счастья"',
+	       yTicks : 1})
+}
+//happyEMAfig({years:2, mu:1/60, lambda:3/7, paper : fig1})
+
+function happyEMAhist(opts)
+{
+    var life,memory,xs
+    [life,memory,xs]=happyEMA(opts)
+    
+    var Ny = (opts.years || 10),
+	lambda = opts.lambda || 1/7,
+	mu = opts.alpha || 1/60,
+	fig = opts.paper || fig1
+
+    var N = 365*Ny
+    h = new Histogram(5).fromList(xs.map(x => x*365).differences(1))
+    f = h.approximateGamma()
+    return new Graphics(fig)
+//	.xAxisType('log')
+//	.yAxisType('log')
+	.histogram(h,{'class':'life', 'type' : 'pdf'})
+	.plot(f.pdf)
+	.axes({xLabel : 'длительность периодов в жизни',
+	       yLabel : 'количество периодов',
+	       xTicks : 5,
+	       xTickFormat : d3.format('i'),
+	       yTickFormat : d3.format('i')})
+}
+
+function happyEMADist(opts)
+{
+    var life,memory,xs
+    [life,memory,xs]=happyEMA(opts)
+    
+    var Ny = (opts.years || 10),
+	lambda = opts.lambda || 1/7,
+	mu = opts.alpha || 1/60,
+	fig = opts.paper || fig1
+
+    var N = 365*Ny
+    h = new Histogram(2).fromList(xs.map(x => x*365).differences(1))
+    return h.approximateGamma().parameters
+}
+//happyEMAhist({mu:1/100, lambda:1/70, paper : fig1, years:1000})
+
+function happyEMAPSD(opts)
+{
+    var life, memory, xs, signal, psd
+ 
+    [life,memory,xs]=happyEMA(opts)
+	
+    signal = life.zipWith(memory,(x,y) => x[1] - y[1]),
+    psd = PSD(signal)
+    for(var i = 0; i < 100; i++)
+    {
+	[life,memory,xs]=happyEMA(opts)
+	
+	signal = life.zipWith(memory,(x,y) => x[1] - y[1]),
+	psd = psd.zipWith(PSD(signal),(x,y) => x + y) 
+    }
+    psd = psd.map(x => x/100)
+    return new Graphics(fig1)
+	.xAxisType('log')
+	.yAxisType('log')
+	.listPlot(psd,{'joined':false,'points':true, 'needles':true})
+	.axes({xTickFormat:d3.format('i'),
+	       yTickFormat:d3.format('.3f'),
+	       xTicks : 3,
+	       yTicks : 3,
+	       xLabel:'частота',
+	       yLabel:'мощность',
+	      })
+    
+}
+
+happyEMAPSD({mu : 1/60, lambda : 1/7, years : 5})
+
+function happyDecay(opts)
+{
+    
+    var N = (opts.years || 10)*365,
+	lambda = opts.lambda || 1/7,
+	mu = opts.mu || 1/60
+	fig = opts.paper || fig1
+	
+    var life = [], x = 0, zero = d3.range(N).map(x => 0)
+    var g = d3.randomNormal(0,1), p = PoissonProcess(lambda)
+    var s = 1
+    var alpha = (1 - Math.pow(10,-mu))
+    for(var i = 0; i < N; i++)
+    {
+	poi = p()
+	if (poi !=0) s *= -1
+	x = x*(1-alpha) + Math.abs(g())*poi*s
+	life.push(x)
+    }
+    var dx = life.map(Math.sign).differences(1)
+	.positions(x => x != 0).map(x => x + 1)
+    
+    return [life,zero,dx]
+    
+}
+
+function happyDecayFig(opts)
+{
+    
+    var N = (opts.years || 10)*365,
+	lambda = opts.lambda || 1/7,
+	mu = opts.mu || 1/60
+	fig = opts.paper || fig1
+	
+    var life,zero,dx
+    [life,zero,dx] = happyDecay(opts)
+    
+    return new Graphics(fig)
+	.diffListPlot(life,zero,{'class':'life',
+			'points' : false,
+			'joined' : true})
+	.axes({xLabel : 'время, дни',
+	       yLabel : 'условный "уровень счастья"',
+	       yTicks : 10})
+	.gridLines({x:dx})
+    
+}
+
+function happyDecayHist(opts)
+{
+    
+    var N = (opts.years || 10)*365,
+	lambda = opts.lambda || 1/7,
+	mu = opts.mu || 1/60
+	fig = opts.paper || fig1
+	
+    var life,zero,dx
+    [life,zero,dx] = happyDecay(opts)
+    
+    h = new Histogram(3).fromList(dx.differences(1))
+    f = h.approximateGamma()
+    return new Graphics(fig)
+//	.xAxisType('log')
+//	.yAxisType('log')
+	.histogram(h,{'class':'life', 'type' : 'pdf'})
+	.plot(f.pdf)
+	.axes({xLabel : 'длительность периодов в жизни',
+	       yLabel : 'количество периодов',
+	       xTicks : 5,
+	       xTickFormat : d3.format('i'),
+	       yTickFormat : d3.format('i')})
+}
+
+//happyDecay({years:2,mu:1/60,lambda:2/7})
+//happyDecayFig({years:10,mu:1/60,lambda:2/7})
+//happyDecay({mu:1/60, lambda:1/7, paper : fig1})
+//happyDecayFig({years:1,mu:1/60,lambda:3/7})
+
+//happyDecayHist({years:1000,mu:1/30,lambda:1/17})
+
+function happyDecayDist(opts)
+{
+    var N = (opts.years || 10)*365,
+	lambda = opts.lambda || 1/7,
+	mu = opts.mu || 1/60
+	fig = opts.paper || fig1
+	
+    var life,zero,dx
+    [life,zero,dx] = happyDecay(opts)
+    
+    var h = new Histogram(3).fromList(dx.differences(1))
+    return f = h.approximateGamma().parameters
+}
+
+function happyDecayDistPar()
+{
+    res1 = []
+    res2 = []
+    res3 = []
+    res4 = []
+    for(var mu = 10; mu <= 90; mu += 5)
+	res1.push([mu,1/happyDecayDist({mu:1/mu,lambda:1/15,years:1000}).beta])
+    for(var mu = 10; mu <= 90; mu += 5)
+	res2.push([mu,1/happyDecayDist({mu:1/mu,lambda:1/30,years:1000}).beta])
+    for(var mu = 10; mu <= 90; mu += 5)
+	res3.push([mu,1/happyDecayDist({mu:1/mu,lambda:1/60,years:1000}).beta])
+    return new Graphics(fig)
+	.xRange([0,100])
+	.yRange([0,150])
+	.listPlot(res1,{'class':'1'})
+	.plot(x => x/3+15*0.85)
+	.listPlot(res2,{'class':'2'})
+	.plot(x => x/3+30*0.85)
+	.listPlot(res3,{'class':'3'})
+	.plot(x => x/3+60*0.85)
+	.axes({})
+}
+
+function happyEMADistPar()
+{
+    res1 = []
+    res2 = []
+    res3 = []
+    res4 = []
+    for(var lambda = 1; lambda <= 100; lambda *= 2)
+    {
+	for(var mu = 30; mu <= 90; mu *= 1.1)
+	{
+	    res1.push([lambda,1/happyEMADist({mu:1/mu,lambda:1/lambda,years:500}).beta])
+	}
+    }
+    return new Graphics(fig1)
+//	.xRange([0,100])
+//	.yRange([0,200])
+	.listPlot(res1,{'class':'1'})
+//	.plot(x => 15*3)
+	.listPlot(res2,{'class':'2'})
+//	.plot(x => 30*3)
+	.listPlot(res3,{'class':'3'})
+	.plot(x => 20+x*1.6)
+	.axes({})
+}
+
+//happyEMADistPar()
+
+function happyLimit(opts)
+{
+    
+    var N = (opts.years || 10)*365,
+	lambda = opts.lambda || 1/7,
+	lim = opts.limit || 10
+	fig = opts.paper || fig1
+	
+    var life = [], x = 0, zero = d3.range(N).map(x => 0)
+    var g = d3.randomNormal(0,1), p = PoissonProcess(lambda)
+    for(var i = 0; i < N; i++)
+    {
+	x = Math.min(lim,Math.max(-lim,x + g()*p()))
+	life.push(x)
+    }
+    var dx = life.map(Math.sign).differences(1).positions(x => x != 0)
+    
+    return new Graphics(fig)
+	.yRange([-10,10])
+	.diffListPlot(life,zero,{'class':'life',
+				 'points' : false,
+				 'joined' : true})
+	.axes({xLabel : 'время, дни',
+	       yLabel : 'условный "уровень счастья"',
+	       yTicks : 1})
+	.gridLines({x:dx})
+    
+}
+//happyLimit({years:20,limit:7})
+
+</script>
+  </body>
+</html>

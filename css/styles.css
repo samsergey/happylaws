@@ -1,0 +1,134 @@
+body {
+    stroke-width : 1.5;
+    stroke-linejoin : round;
+    stroke-linecap  : round;    
+    font-family : sans;
+    font-style : italic;
+    font-size : 14px
+}
+
+.graphics {
+    border : dotted 1px gray;
+}
+
+
+/* listPlot */
+
+
+.listPlot .area {
+    fill : skyblue;
+}
+
+.listPlot .line {
+    stroke : navy;
+}
+
+.listPlot .points {
+    stroke : white;
+    stroke-width : 1;
+    stroke-opacity : 0.5;
+    fill : navy;
+}
+
+.listPlot .needles {
+    stroke : goldenrod;
+    stroke-width : 1.5;
+    stroke-opacity : 0.5;
+}
+
+/* plot */
+
+
+.plot .area {
+    fill : skyblue;
+}
+
+.plot .line {
+    stroke : navy;
+}
+
+/* Axes */
+
+.axis {
+    stroke-width : 1;
+}
+
+.axis .label {
+    fill : black;
+    stroke : none;
+}
+
+/* labels */
+
+
+.label {
+    fill : navy;
+    stroke : none;
+}
+
+/* diffListPlot */
+
+.diffListPlot .areaAbove {
+    fill : pink
+}
+
+.diffListPlot .areaBelow {
+    fill : skyblue
+}
+
+.listPlot .A .line {
+    stroke : navy;
+}
+
+.listPlot .A .area {
+    fill : palegreen;
+}
+
+.listPlot .B .line {
+    stroke : brown;
+}
+
+.listPlot .B .area {
+    fill : pink;
+}
+
+.diffListPlot .A .points {
+    stroke : white;
+    stroke-width : 1;
+    fill : navy;
+}
+
+.diffListPlot .B .points {
+    stroke : white;
+    stroke-width : 1;
+    fill : brown;
+}
+
+/* Lorentz curve */
+
+.Lorentz .upper .area {
+    fill : orange;
+}
+
+.Lorentz .upper .line {
+    stroke : indianred;
+    stroke-width : 3;
+}
+
+.Lorentz .lower .area {
+    fill : palegreen;
+}
+
+.Lorentz .lower .line {
+    stroke : black;
+}
+
+.gridLines {
+    stroke : lightgray;
+    stroke-width: 1;
+}
+
+.histogram rect {
+    stroke : none;
+    fill : darkorange;
+}

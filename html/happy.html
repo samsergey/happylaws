@@ -1,0 +1,102 @@
+<html>
+    <canvas id='paper' width=600 height=600  style='border:dotted black 1px;'></canvas>
+    <br/>
+    <p id='output'></p>
+    <script>
+
+var ctx = paper.getContext('2d');
+
+
+var w = 600, h=500;
+
+var m1 = 0.02,
+    m2 = 0.02,
+    s = 4,
+    f = 0.2,
+    binW = 10;
+
+function next(x)
+{
+    var dx = s*Math.pow(Math.random(),4)*event(f)*(1-2*event(0.5));
+    var x1 = x*(1-(x<0?m1:m2)) + dx;
+    life[x1>0 ? 'good' : 'bad']++
+    if (dx > 0)
+	news['good']++;
+    else if (dx < 0)
+	news['bad']++;
+
+    len++
+    if (x1*x < 0)
+    {
+	var bin = Math.trunc(len/binW)*binW;
+	epoch[bin] = epoch[bin] + 1 || 1;
+	len = 0;
+    }
+    return x1;
+}
+
+
+function event(f)
+{
+    return Math.random() < f ? 1 : 0
+}
+
+var X = [0,0],
+    epoch = {}, len = 0,
+    news = {'good':0, 'bad':0},
+    life = {'good':0, 'bad':0};
+
+function step() {
+    X.unshift(next(X[0]));
+    clean()
+    barChart(epoch);
+    showList(X.map(x => x*10));
+    if (X.length > w) X.pop();
+    output.innerText = "Хорошие новости: " + Math.round(news['good']/(news['good'] + news['bad'])*100) + "%";
+    output.innerText += "\nПлохие новости: " + Math.round(news['bad']/(news['good'] + news['bad'])*100) + "%";
+    output.innerText += "\nЖизнь прекрасна: " + Math.round(life['good']/(life['good'] + life['bad'])*100) + "%";
+    output.innerText += "\nЖизнь ужасна: " + Math.round(life['bad']/(life['good'] + life['bad'])*100) + "%";
+}
+
+
+function clean() {
+    ctx.clearRect(0,0,w,h);
+}
+
+function showList(lst){
+    var i = 1;
+    lst.forEach(x =>{
+	ctx.beginPath();
+	ctx.strokeStyle = x > 0? 'red' : 'blue';
+	ctx.moveTo(i, h/2);
+	ctx.lineTo(i, h/2-x);
+	ctx.stroke()
+	i++;
+    });
+}
+
+function barChart(hist){
+    ctx.fillStyle = "orange";
+    for(b in hist)
+    {
+	ctx.beginPath();
+	ctx.fillRect(b,h,10,-hist[b]);
+    }
+}
+
+function histogram(lst,step)
+{
+    var bins = {};
+    for(var i=0; i<lst.length; i++)
+    {
+	bin = Math.trunc(lst[i]/step)*step
+	bins[bin] = bins[bin]+1 || 1;
+    }
+    return bins    
+}
+
+
+window.setInterval(step,0)
+
+  </script>
+</html>
